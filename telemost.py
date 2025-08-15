@@ -232,19 +232,58 @@ def main():
         try:
             # Переход на страницу конференции
             logger.info(f"Переход на страницу конференции: {telemost_url}")
-            driver.get(telemost_url)
-
-            # Нажатие на кнопку "Продолжить в браузере"
-            continue_button = wait.until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        "//button[contains(@class, 'continueInBrowserButton')]"
+            try:
+                driver.get(telemost_url)
+                logger.info("Страница успешно загружена")
+                
+                # Проверяем текущий URL
+                current_url = driver.current_url
+                logger.info(f"Текущий URL: {current_url}")
+                
+                # Получаем исходный код страницы для диагностики
+                page_source = driver.page_source
+                if len(page_source) > 0:
+                    logger.info(f"Длина исходного кода страницы: {len(page_source)} символов")
+                else:
+                    logger.error("Страница пустая!")
+                
+                # Делаем скриншот для диагностики
+                if not is_local:
+                    screenshot_path = "error_screenshot.png"
+                    driver.save_screenshot(screenshot_path)
+                    logger.info(f"Сделан скриншот: {screenshot_path}")
+                
+                # Ждем появления кнопки с таймаутом
+                logger.info("Ожидание кнопки 'Продолжить в браузере'...")
+                continue_button = wait.until(
+                    EC.element_to_be_clickable(
+                        (
+                            By.XPATH,
+                            "//button[contains(@class, 'continueInBrowserButton')]"
+                        )
                     )
                 )
-            )
-            continue_button.click()
-            logger.info("Нажата кнопка 'Продолжить в браузере'")
+                
+                # Проверяем видимость кнопки
+                if continue_button.is_displayed():
+                    logger.info("Кнопка 'Продолжить в браузере' найдена и видима")
+                    continue_button.click()
+                    logger.info("Кнопка 'Продолжить в браузере' нажата")
+                else:
+                    logger.error("Кнопка найдена, но не видима!")
+                    
+            except Exception as e:
+                logger.error(f"Ошибка при загрузке страницы: {str(e)}")
+                if not is_local:
+                    # Показываем дополнительную информацию на сервере
+                    try:
+                        import psutil
+                        process = psutil.Process()
+                        logger.info(f"Использование памяти: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                        logger.info(f"CPU: {process.cpu_percent()}%")
+                    except:
+                        pass
+                raise
 
             # Ввод имени пользователя
             name_input = wait.until(
