@@ -43,9 +43,42 @@ cp .env.example .env
 
 ## Запуск
 
-Для запуска скрипта выполните:
+### Локальный запуск (Windows)
+
+Для локального запуска на Windows используется Chrome for Testing. Убедитесь, что:
+1. У вас установлен Chrome for Testing (не обычный Chrome)
+2. В файле `.env` указан путь к Python в переменной `PYTHON_PATH`
+
+Запуск скрипта:
 
 ```bash
+# Windows PowerShell
+$env:PYTHON_PATH | python telemost.py
+
+# Windows CMD
+%PYTHON_PATH% telemost.py
+```
+
+### Запуск на сервере (Ubuntu)
+
+На сервере используется обычный Google Chrome, который устанавливается автоматически при деплое (см. DEPLOY.md).
+
+Запуск через systemd сервис:
+```bash
+# Запуск сервиса
+sudo systemctl start telemost
+
+# Проверка статуса
+sudo systemctl status telemost
+
+# Просмотр логов
+sudo journalctl -u telemost -f
+```
+
+Ручной запуск на сервере (для отладки):
+```bash
+cd /opt/meet_recording_test
+source .venv/bin/activate
 python telemost.py
 ```
 

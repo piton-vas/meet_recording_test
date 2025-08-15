@@ -12,6 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -91,8 +92,13 @@ def main():
             }
         )
 
+        # Определяем тип Chrome в зависимости от окружения
+        is_local = os.getenv("PYTHON_PATH") is not None
+        chrome_type = ChromeType.CHROMIUM if is_local else ChromeType.GOOGLE
+        logger.info(f"Используется {'Chrome for Testing' if is_local else 'Google Chrome'}")
+
         # Инициализация драйвера
-        driver_path = ChromeDriverManager().install()
+        driver_path = ChromeDriverManager(chrome_type=chrome_type).install()
         service = Service(executable_path=driver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
         wait = WebDriverWait(driver, 20)

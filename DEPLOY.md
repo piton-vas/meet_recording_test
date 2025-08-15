@@ -15,8 +15,12 @@ sudo apt upgrade -y
 
 3. Установите необходимые пакеты:
 ```bash
+# Добавление репозитория с Python 3.10
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+
 # Установка Python и инструментов разработки
-sudo apt install -y python3.10 python3.10-venv python3-pip
+sudo apt install -y python3 python3-venv python3.10-distutils python3-pip
 
 # Установка Chrome и зависимостей
 sudo apt install -y wget curl unzip xvfb
