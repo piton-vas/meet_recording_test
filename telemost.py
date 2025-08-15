@@ -31,9 +31,11 @@ def setup_chrome_options():
     chrome_options.add_argument("--use-fake-ui-for-media-stream")
     chrome_options.add_argument("--use-fake-device-for-media-stream")
     
-    # Для запуска на сервере
+    # Базовые опции безопасности
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # Отключаем GPU
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-software-rasterizer")
     
@@ -42,6 +44,27 @@ def setup_chrome_options():
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-infobars")
     chrome_options.add_argument("--disable-notifications")
+    
+    # Опции для улучшения производительности
+    chrome_options.add_argument("--disable-features=TranslateUI")
+    chrome_options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+    chrome_options.add_argument("--disable-site-isolation-trials")
+    chrome_options.add_argument("--disable-web-security")
+    
+    # Дополнительные опции для стабильности на сервере
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--no-default-browser-check")
+    chrome_options.add_argument("--disable-background-networking")
+    
+    # Настройки для более быстрой загрузки
+    prefs = {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_setting_values.media_stream_mic": 1,
+        "profile.default_content_setting_values.media_stream_camera": 1,
+        "profile.default_content_setting_values.geolocation": 2,
+    }
+    chrome_options.add_experimental_option("prefs", prefs)
 
     return chrome_options
 
@@ -158,13 +181,51 @@ def main():
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--disable-software-rasterizer")
+            # Дополнительные опции для стабильности на сервере
+            chrome_options.add_argument("--disable-setuid-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--start-maximized")
+            chrome_options.add_argument("--single-process")
+            # Принудительно используем /dev/shm
+            chrome_options.add_argument("--disable-dev-shm-usage=false")
+
+        # Проверка наличия Chrome
+        if not is_local:
+            try:
+                import subprocess
+                chrome_version = subprocess.check_output(['google-chrome', '--version'])
+                logger.info(f"Версия Chrome: {chrome_version.decode().strip()}")
+            except Exception as e:
+                logger.error(f"Chrome не найден: {str(e)}")
+                logger.info("Попытка установить Chrome...")
+                try:
+                    # Обновляем список пакетов
+                    subprocess.run(['sudo', 'apt-get', 'update'], check=True)
+                    # Устанавливаем Chrome
+                    subprocess.run([
+                        'sudo', 'apt-get', 'install', '-y',
+                        'google-chrome-stable'
+                    ], check=True)
+                    logger.info("Chrome успешно установлен")
+                except Exception as e:
+                    logger.error(f"Не удалось установить Chrome: {str(e)}")
+                    raise
 
         # Инициализация драйвера
         try:
-            # Используем Selenium Manager для автоматической установки драйвера
+            logger.info("Создание экземпляра драйвера...")
             driver = webdriver.Chrome(options=chrome_options)
+            logger.info("Драйвер успешно создан")
         except Exception as e:
-            logger.error(f"Ошибка при установке драйвера: {str(e)}")
+            logger.error(f"Ошибка при создании драйвера: {str(e)}")
+            if not is_local:
+                # Показываем дополнительную информацию на сервере
+                try:
+                    subprocess.run(['ps', 'aux', '|', 'grep', 'chrome'], shell=True)
+                    subprocess.run(['ls', '-la', '/usr/bin/google-chrome'], shell=True)
+                except:
+                    pass
             raise
         wait = WebDriverWait(driver, 20)
 
