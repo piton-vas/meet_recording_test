@@ -36,6 +36,9 @@ cp .env.example .env
 
 В файле `.env` необходимо указать следующие параметры:
 
+- `ENV` - режим работы приложения:
+  - `prod` - для запуска на сервере Ubuntu (по умолчанию)
+  - `local` - для локального запуска с Chrome for Testing
 - `TELEMOST_URL` - URL конференции Яндекс Телемост
 - `USER_NAME` - имя пользователя для входа в конференцию (по умолчанию "Test User")
 - `RECORD_TIME` - время записи в секундах (по умолчанию 60)
@@ -47,16 +50,13 @@ cp .env.example .env
 
 Для локального запуска на Windows используется Chrome for Testing. Убедитесь, что:
 1. У вас установлен Chrome for Testing (не обычный Chrome)
-2. В файле `.env` указан путь к Python в переменной `PYTHON_PATH`
+2. В файле `.env` установлен режим `ENV=local`
 
 Запуск скрипта:
 
 ```bash
-# Windows PowerShell
-$env:PYTHON_PATH | python telemost.py
-
-# Windows CMD
-%PYTHON_PATH% telemost.py
+# Из виртуального окружения .venv
+python telemost.py
 ```
 
 ### Запуск на сервере (Ubuntu)

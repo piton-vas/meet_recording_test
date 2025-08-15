@@ -6,13 +6,10 @@ from pathlib import Path
 from datetime import datetime
 
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -56,19 +53,62 @@ def setup_download_directory():
     return str(download_path.absolute())
 
 
+def validate_env_vars():
+    """Проверка и валидация переменных окружения."""
+    env_vars = {
+        "TELEMOST_URL": {
+            "value": os.getenv("TELEMOST_URL"),
+            "required": True,
+            "error": "URL конференции не указан в .env файле"
+        },
+        "USER_NAME": {
+            "value": os.getenv("USER_NAME", DEFAULT_USER_NAME),
+            "required": False
+        },
+        "RECORD_TIME": {
+            "value": os.getenv("RECORD_TIME", str(DEFAULT_RECORD_TIME)),
+            "required": False,
+            "validator": lambda x: x.isdigit() and int(x) > 0,
+            "error": "RECORD_TIME должно быть положительным числом"
+        },
+        "ENV": {
+            "value": os.getenv("ENV", "prod").lower(),
+            "required": False,
+            "validator": lambda x: x in ["prod", "local"],
+            "error": "ENV должно быть 'prod' или 'local'"
+        }
+    }
+
+    for var_name, config in env_vars.items():
+        value = config["value"]
+        
+        # Проверка обязательных переменных
+        if config["required"] and not value:
+            logger.error(config["error"])
+            return False
+            
+        # Валидация значения если есть validator
+        if value and config.get("validator"):
+            if not config["validator"](value):
+                logger.error(config["error"])
+                return False
+    
+    return True
+
+
 def main():
     """Основная функция для записи конференции."""
     # Загрузка переменных окружения
     load_dotenv()
 
+    # Валидация переменных окружения
+    if not validate_env_vars():
+        return
+
     # Получение настроек
     telemost_url = os.getenv("TELEMOST_URL")
     user_name = os.getenv("USER_NAME", DEFAULT_USER_NAME)
     record_time = int(os.getenv("RECORD_TIME", str(DEFAULT_RECORD_TIME)))
-
-    if not telemost_url:
-        logger.error("URL конференции не указан в .env файле")
-        return
 
     try:
         # Настройка логирования
@@ -92,15 +132,40 @@ def main():
             }
         )
 
-        # Определяем тип Chrome в зависимости от окружения
-        is_local = os.getenv("PYTHON_PATH") is not None
-        chrome_type = ChromeType.CHROMIUM if is_local else ChromeType.GOOGLE
-        logger.info(f"Используется {'Chrome for Testing' if is_local else 'Google Chrome'}")
+        # Определяем режим работы
+        env_mode = os.getenv("ENV", "prod").lower()
+        is_local = env_mode == "local"
+        logger.info(f"Режим работы: {'локальный' if is_local else 'production'}")
+
+        if is_local:
+            # В локальном режиме используем Chrome for Testing
+            logger.info("Используется Chrome for Testing")
+            # Опции для локального режима
+            chrome_options.add_argument("--allow-insecure-localhost")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            # Отключаем headless режим для локальной разработки
+            chrome_options.arguments.remove("--headless=new")
+            
+            # Если указан путь к Chrome for Testing
+            chrome_path = os.getenv("CHROME_PATH")
+            if chrome_path:
+                chrome_options.binary_location = chrome_path
+        else:
+            # В production используем обычный Chrome
+            logger.info("Используется Google Chrome")
+            # Дополнительные опции для production режима на Ubuntu
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-software-rasterizer")
 
         # Инициализация драйвера
-        driver_path = ChromeDriverManager(chrome_type=chrome_type).install()
-        service = Service(executable_path=driver_path)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            # Используем Selenium Manager для автоматической установки драйвера
+            driver = webdriver.Chrome(options=chrome_options)
+        except Exception as e:
+            logger.error(f"Ошибка при установке драйвера: {str(e)}")
+            raise
         wait = WebDriverWait(driver, 20)
 
         try:
